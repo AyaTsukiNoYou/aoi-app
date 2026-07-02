@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#ffd94a">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-192.png">
+<!-- 教科書体フォント（き・さ 等を手書きの正しい形にする） -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
 <title>あおいちゃんの がんばりバンク</title>
 <style>
   :root{
@@ -40,7 +44,7 @@
   .qpicture{font-size:clamp(70px,18vw,150px); text-align:center; margin:6px 0;}
   .speakBtn{ align-self:center; background:var(--yellow); border:none; border-radius:999px; font-size:clamp(16px,3vw,24px); font-weight:800; padding:10px 24px; cursor:pointer; margin-bottom:6px; }
   .choices{flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; align-content:center;}
-  .choice{ border:none; border-radius:24px; background:#fff; border:5px solid var(--purple); font-weight:900; color:var(--ink); cursor:pointer; min-height:26vh; box-shadow:0 6px 0 rgba(0,0,0,.12); font-size:clamp(46px,13vw,110px); }
+  .choice{ border:none; border-radius:24px; background:#fff; border:5px solid var(--purple); font-weight:600; color:var(--ink); cursor:pointer; min-height:26vh; box-shadow:0 6px 0 rgba(0,0,0,.12); font-size:clamp(46px,13vw,110px); font-family:"Klee One","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif; }
   .choice:active{transform:translateY(3px);}
   .choice.ok{background:var(--green); border-color:var(--green); color:#fff;}
   .choice.ng{background:#ffd0d0; border-color:#ffb0b0;}
@@ -231,6 +235,8 @@
       <input id="setSwMin" type="number" min="1">
       <label>じかんに やめられたら ボーナスポイント</label>
       <input id="setStopBonus" type="number" min="0">
+      <label>おばけが くるまでの じかん（ぷん）</label>
+      <input id="setGraceMin" type="number" min="1">
     </div>
     <button onclick="saveSettings()">ほぞんする</button>
     <button style="background:#eee" onclick="resetDay()">きょうの きろくを リセット</button>
@@ -240,7 +246,7 @@
 
 <script>
 /* ============ 保存データ ============ */
-const DEFAULTS = { points:0, mode:'weekday', ytCost:20, swCost:50, swMin:30, stopBonus:10, pin:'0000',
+const DEFAULTS = { points:0, mode:'weekday', ytCost:20, swCost:50, swMin:30, stopBonus:10, graceMin:5, pin:'0000',
   day:todayStr(), correctCount:0, choresClaimed:[] };
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 let S = load();
@@ -361,10 +367,16 @@ let curWrite='', ctx=null, drawing=false, cv=null;
 let inkCv=null, inkCtx=null;         // ユーザーが書いた線だけを持つ裏キャンバス
 let glyphMask=null, glyphCount=0;    // お手本の文字の形（判定用マスク）
 let lastX=0, lastY=0;
+function writeFont(px){ return "600 "+px+"px 'Klee One','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif"; }
 function newWrite(){
   curWrite = rnd(HIRA);
   document.getElementById('writePrompt').textContent = '「'+curWrite+'」を なぞって かこう！';
-  setupCanvas(); drawTemplate(); buildMask();
+  setupCanvas();
+  const render = ()=>{ drawTemplate(); buildMask(); };
+  // 教科書体フォントの読み込みを待ってから描く（き・さ 等を正しい形に）
+  if(document.fonts && document.fonts.load){
+    document.fonts.load(writeFont(cv.height*0.72)).then(render).catch(render);
+  } else { render(); }
   speak(curWrite+'　を なぞって かこう');
 }
 function setupCanvas(){
@@ -393,7 +405,7 @@ function drawTemplate(){
   ctx.clearRect(0,0,cv.width,cv.height);
   ctx.fillStyle='rgba(120,90,60,0.15)';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.font='bold '+(cv.height*0.72)+'px "Hiragino Maru Gothic ProN","Yu Gothic",sans-serif';
+  ctx.font=writeFont(cv.height*0.72);
   ctx.fillText(curWrite, cv.width/2, cv.height/2);
 }
 function buildMask(){
@@ -401,7 +413,7 @@ function buildMask(){
   const m=document.createElement('canvas'); m.width=cv.width; m.height=cv.height;
   const mc=m.getContext('2d');
   mc.textAlign='center'; mc.textBaseline='middle';
-  mc.font='bold '+(cv.height*0.72)+'px "Hiragino Maru Gothic ProN","Yu Gothic",sans-serif';
+  mc.font=writeFont(cv.height*0.72);
   mc.fillStyle='#000'; mc.strokeStyle='#000'; mc.lineJoin='round'; mc.lineWidth=cv.width*0.12;
   mc.strokeText(curWrite, cv.width/2, cv.height/2);
   mc.fillText(curWrite, cv.width/2, cv.height/2);
@@ -490,41 +502,84 @@ function renderShop(){
   });
 }
 function getYouTube(){ celebrate('🎬','いってらっしゃい！','YouTube Kids を ひらくよ'); setTimeout(()=>window.open('https://www.youtubekids.com/','_blank'),800); }
-let timerIv=null, warned5=false, warned1=false;
+let timerIv=null, warned5=false, warned1=false, timerPhase='play';
+let endAt=0, lastNudge=0, wakeLock=null;
+// 画面を眠らせない（スリープでタイマーが止まらないように）
+async function requestWake(){ try{ if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); } }catch(e){} }
+function releaseWake(){ try{ if(wakeLock){ wakeLock.release(); wakeLock=null; } }catch(e){} }
+// 画面に戻ってきたら、ロックを取り直して実時刻で表示を追いつかせる
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && document.getElementById('timer').classList.contains('active')){
+    requestWake(); tickTimer();
+  }
+});
 function getSwitch(){
-  let sec=S.swMin*60; warned5=false; warned1=false;
+  warned5=false; warned1=false; timerPhase='play'; lastNudge=0;
+  endAt = Date.now() + S.swMin*60*1000;   // 終わりの「時刻」を決める（実時計で判定）
   // タイマー画面を「あそび中」の見た目にリセット
   document.getElementById('ghost').style.display='none';
   document.getElementById('timerTitle').textContent='🎮 スイッチ タイム';
   document.getElementById('timerMsg').textContent='タイマーが なったら おしまいだよ';
   document.getElementById('timerBtns').innerHTML='<button onclick="stopTimer()" style="background:#eee;">タイマーを とめる</button>';
-  document.getElementById('timer').classList.add('active'); updateTimerNum(sec);
-  speak('スイッチ タイム すたーと'); clearInterval(timerIv);
-  timerIv=setInterval(()=>{
-    sec--; updateTimerNum(sec);
-    if(sec===300 && !warned5){ warned5=true; speak('あと ５ふん だよー'); ding(); }
-    if(sec===60 && !warned1){ warned1=true; speak('あと １ぷん！ もうすぐ おしまいだよ'); ding(); }
-    if(sec<=0){ clearInterval(timerIv); timeUp(); }
-  },1000);
+  document.getElementById('timer').classList.add('active');
+  speak('スイッチ タイム すたーと'); requestWake();
+  clearInterval(timerIv); timerIv=setInterval(tickTimer,1000); tickTimer();
 }
-function timeUp(){
-  document.getElementById('ghost').style.display='block';
-  document.getElementById('timerTitle').textContent='👻 おばけが きたよ！';
-  document.getElementById('timerNum').textContent='0:00';
-  document.getElementById('timerMsg').textContent='ゲームを やめて タイマーを とめられるかな？ やめられたら はなまる！';
+// 毎秒＆画面復帰時に、実時刻から残り/超過を計算しなおす（一瞬止まっても追いつく）
+function tickTimer(){
+  const now=Date.now();
+  if(timerPhase==='play'){
+    const remain=Math.round((endAt-now)/1000);
+    if(remain>0){
+      updateTimerNum(remain);
+      if(remain<=300 && !warned5){ warned5=true; speak('あと ５ふん だよー'); ding(); }
+      if(remain<=60  && !warned1){ warned1=true; speak('あと １ぷん！ もうすぐ おしまいだよ'); ding(); }
+    } else { enterGrace(); }
+  } else {
+    const over=Math.floor((now-endAt)/1000);
+    document.getElementById('timerNum').textContent='＋'+fmtSec(Math.max(0,over));
+    if(timerPhase==='grace'){
+      if(over>=lastNudge+60){ lastNudge=Math.floor(over/60)*60; speak('まだかなー？ やめられるかな？'); ding(); }
+      if(over >= S.graceMin*60){ enterGhost(); }
+    }
+  }
+}
+// ① 終わり時間：やさしく案内だけ（おばけはまだ出さない）
+function enterGrace(){
+  timerPhase='grace'; lastNudge=0;
+  document.getElementById('ghost').style.display='none';
+  document.getElementById('timerTitle').textContent='⏰ おしまいの じかんだよ';
+  document.getElementById('timerNum').textContent='＋0:00';
+  document.getElementById('timerMsg').textContent='タイマーを とめて やめられたら はなまる！';
   document.getElementById('timerBtns').innerHTML='<button onclick="claimStopBonus()" style="background:var(--green);color:#fff;">やめられたよ！</button>';
-  speak('おばけさんが きたよ！ ゲームを やめて、タイマーを とめられるかな？');
-  alarm();
+  speak('おしまいの じかんだよ。 やめられたら はなまる！'); ding();
 }
+// ③ 全然やめられない → おばけ登場
+function enterGhost(){
+  timerPhase='ghost';
+  document.getElementById('ghost').style.display='block';
+  document.getElementById('timerTitle').textContent='👻 おばけだぞぉ！';
+  document.getElementById('timerMsg').textContent='まだ やめてないよー！ はやく タイマーを とめて！';
+  speak('おばけだぞぉ！ まだ やめてないよー。 はやく やめてー！'); alarm();
+}
+// ② やめられた
 function claimStopBonus(){
-  clearInterval(timerIv);
-  S.points += S.stopBonus; save();
+  clearInterval(timerIv); releaseWake();
+  const inTime = (timerPhase==='grace'); // おばけが来る前にやめられたか
   closeOverlay('timer');
-  speak('やめられて えらい！ はなまる！');
-  celebrate('🌸','やめられて えらい！','ボーナス +'+S.stopBonus+' ポイント！');
+  if(inTime){
+    S.points += S.stopBonus; save();
+    speak('やめられて えらい！ はなまる！');
+    celebrate('🌸','やめられて えらい！','ボーナス +'+S.stopBonus+' ポイント！');
+  } else {
+    save();
+    speak('やっと やめられたね。 つぎは じかんに やめようね');
+    celebrate('😊','やめられたね','つぎは おばけが くるまえに やめられるかな？');
+  }
 }
+function fmtSec(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 function updateTimerNum(sec){ const m=String(Math.floor(sec/60)).padStart(2,'0'), s=String(sec%60).padStart(2,'0'); document.getElementById('timerNum').textContent=m+':'+s; }
-function stopTimer(){ clearInterval(timerIv); closeOverlay('timer'); }
+function stopTimer(){ clearInterval(timerIv); releaseWake(); closeOverlay('timer'); }
 function ding(){ try{ const c=new (window.AudioContext||window.webkitAudioContext)(); const o=c.createOscillator(),g=c.createGain();
   o.frequency.value=660; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.15,c.currentTime); o.start(); o.stop(c.currentTime+0.25); }catch(e){} }
 function alarm(){ try{ const c=new (window.AudioContext||window.webkitAudioContext)();
@@ -542,10 +597,10 @@ function pinKey(n){ if(pinInput.length<4){ pinInput+=n; renderPin(); if(pinInput
 function pinDel(){ pinInput=pinInput.slice(0,-1); renderPin(); }
 function renderPin(){ document.getElementById('pinDisplay').textContent='●'.repeat(pinInput.length); }
 function checkPin(){ setTimeout(()=>{ if(pinInput===S.pin){ closeOverlay('pin'); openSettings(); } else{ document.getElementById('pinDisplay').textContent='ちがうよ'; pinInput=''; } },200); }
-function openSettings(){ document.getElementById('setYt').value=S.ytCost; document.getElementById('setSw').value=S.swCost; document.getElementById('setSwMin').value=S.swMin; document.getElementById('setStopBonus').value=S.stopBonus; markMode(); document.getElementById('settings').classList.add('active'); }
+function openSettings(){ document.getElementById('setYt').value=S.ytCost; document.getElementById('setSw').value=S.swCost; document.getElementById('setSwMin').value=S.swMin; document.getElementById('setStopBonus').value=S.stopBonus; document.getElementById('setGraceMin').value=S.graceMin; markMode(); document.getElementById('settings').classList.add('active'); }
 function setMode(m){ S.mode=m; markMode(); }
 function markMode(){ document.getElementById('mWeekday').classList.toggle('sel',S.mode==='weekday'); document.getElementById('mHoliday').classList.toggle('sel',S.mode==='holiday'); }
-function saveSettings(){ S.ytCost=+document.getElementById('setYt').value||20; S.swCost=+document.getElementById('setSw').value||50; S.swMin=+document.getElementById('setSwMin').value||30; S.stopBonus=+document.getElementById('setStopBonus').value||0; save(); closeOverlay('settings'); }
+function saveSettings(){ S.ytCost=+document.getElementById('setYt').value||20; S.swCost=+document.getElementById('setSw').value||50; S.swMin=+document.getElementById('setSwMin').value||30; S.stopBonus=+document.getElementById('setStopBonus').value||0; S.graceMin=+document.getElementById('setGraceMin').value||5; save(); closeOverlay('settings'); }
 function resetDay(){ S.correctCount=0; S.choresClaimed=[]; save(); closeOverlay('settings'); }
 
 /* ============ 描画 ============ */
