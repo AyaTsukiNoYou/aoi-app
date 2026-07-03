@@ -80,7 +80,7 @@
   /* オーバーレイ */
   .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:20px; z-index:50; }
   .overlay.active{display:flex;}
-  .card{ background:#fff; border-radius:28px; padding:28px; max-width:560px; width:100%; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  .card{ background:#fff; border-radius:28px; padding:28px; max-width:560px; width:100%; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,.3); max-height:88vh; overflow-y:auto; -webkit-overflow-scrolling:touch;}
   .card h2{font-size:clamp(24px,5vw,38px); margin:0 0 14px;}
   .card p{font-size:clamp(18px,3.5vw,26px); margin:8px 0;}
   .card .big{font-size:clamp(64px,16vw,120px); margin:6px 0;}
@@ -218,6 +218,16 @@
   </div>
 </div>
 
+<!-- 実物ごほうびの かくにん -->
+<div id="confirm" class="overlay">
+  <div class="card">
+    <div class="big" id="confirmEmoji">🎰</div>
+    <p id="confirmMsg">ほんとうに こうかんする？</p>
+    <button onclick="realYes()" style="background:var(--green);color:#fff;">こうかんする！</button>
+    <button onclick="realNo()" style="background:#eee;">やめとく</button>
+  </div>
+</div>
+
 <!-- Switch2タイマー -->
 <div id="timer" class="overlay">
   <div class="card">
@@ -265,6 +275,10 @@
       <input id="setGraceMin" type="number" min="1">
       <label>おべんきょうポイントの 1にちの うわげん（0=むせいげん）</label>
       <input id="setDailyCap" type="number" min="0">
+      <label>🎰 ガチャガチャ 1かいの ポイント</label>
+      <input id="setGacha" type="number" min="1">
+      <label>🧸 おもちゃを かう ポイント</label>
+      <input id="setToy" type="number" min="1">
       <p id="todayInfo" style="font-size:15px;color:#888;margin:10px 0 0;"></p>
     </div>
     <button onclick="saveSettings()">ほぞんする</button>
@@ -277,6 +291,7 @@
 <script>
 /* ============ 保存データ ============ */
 const DEFAULTS = { points:0, mode:'weekday', ptPerMin:1, swMin:30, stopBonus:10, graceMin:5, pin:'0000',
+  gachaCost:100, toyCost:300,
   dailyCap:30, earnedToday:0,
   levels:{word:1,num:1,kata:1,write:1}, streaks:{word:0,num:0,kata:0,write:0},
   stickers:[], day:todayStr(), correctCount:0, choreCounts:{} };
@@ -680,7 +695,37 @@ function renderShop(){
   const box=document.getElementById('rewardList'); box.innerHTML='';
   addRewardRow(box,'🎬','YouTube Kids', YT_OPTS, getYouTube);
   addRewardRow(box,'🎮','Switch', SW_OPTS, getSwitch);
+  // 実物ごほうび（貯金の大目標）
+  addRealRow(box,'🎰','ガチャガチャ 1かい', S.gachaCost);
+  addRealRow(box,'🧸','おもちゃを かう', S.toyCost);
 }
+// 実物ごほうび：確認をはさんでから交換（誤タップで大ポイント消失を防ぐ）
+function addRealRow(box,emoji,name,cost){
+  const row=document.createElement('div'); row.className='reward';
+  row.innerHTML=`<span class="remoji">${emoji}</span><span class="rname">${name}</span><span class="rcost">${cost}pt</span>`;
+  const btn=document.createElement('button'); btn.className='getBtn'; btn.textContent='こうかん';
+  btn.disabled=S.points<cost;
+  btn.onclick=()=>askReal(emoji,name,cost);
+  row.appendChild(btn); box.appendChild(row);
+}
+let pendingReal=null;
+function askReal(emoji,name,cost){
+  pendingReal={emoji,name,cost};
+  document.getElementById('confirmEmoji').textContent=emoji;
+  document.getElementById('confirmMsg').textContent='「'+name+'」に '+cost+'ポイント つかうよ。ほんとうに こうかんする？';
+  document.getElementById('confirm').classList.add('active');
+  speak('ほんとうに こうかんする？');
+}
+function realYes(){
+  const r=pendingReal; pendingReal=null;
+  closeOverlay('confirm');
+  if(!r || S.points<r.cost) return;
+  S.points-=r.cost; grantSticker('firstReward'); save();
+  speak('おめでとう！ ママに みせてね！');
+  celebrate('🎫','こうかんチケット GET！', r.emoji+' '+r.name+'（'+r.cost+'pt）— この がめんを ママに みせてね！');
+  renderShop();
+}
+function realNo(){ pendingReal=null; closeOverlay('confirm'); }
 function addRewardRow(box,emoji,name,opts,act){
   const row=document.createElement('div'); row.className='reward';
   row.innerHTML=`<span class="remoji">${emoji}</span><span class="rname">${name}</span>`;
@@ -794,6 +839,7 @@ function checkPin(){ setTimeout(()=>{ if(pinInput===S.pin){ closeOverlay('pin');
 function openSettings(){
   document.getElementById('setPtPerMin').value=S.ptPerMin; document.getElementById('setStopBonus').value=S.stopBonus;
   document.getElementById('setGraceMin').value=S.graceMin; document.getElementById('setDailyCap').value=S.dailyCap;
+  document.getElementById('setGacha').value=S.gachaCost; document.getElementById('setToy').value=S.toyCost;
   const capTxt=(S.dailyCap>0)?(' / '+S.dailyCap):'（むせいげん）';
   document.getElementById('todayInfo').textContent='きょうの おべんきょうポイント：'+S.earnedToday+capTxt
     +'　｜　レベル ことば'+S.levels.word+'・かず'+S.levels.num+'・カタカナ'+S.levels.kata+'・かく'+S.levels.write;
@@ -806,6 +852,8 @@ function saveSettings(){
   S.stopBonus=+document.getElementById('setStopBonus').value||0;
   S.graceMin=+document.getElementById('setGraceMin').value||5;
   const cap=parseInt(document.getElementById('setDailyCap').value,10); S.dailyCap=isNaN(cap)?30:Math.max(0,cap); // 0=むせいげん
+  S.gachaCost=+document.getElementById('setGacha').value||100;
+  S.toyCost=+document.getElementById('setToy').value||300;
   save(); closeOverlay('settings');
 }
 function resetDay(){ S.correctCount=0; S.choresClaimed=[]; S.earnedToday=0; S.streaks={word:0,num:0,kata:0,write:0}; save(); closeOverlay('settings'); }
