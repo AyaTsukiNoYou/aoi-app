@@ -43,6 +43,40 @@
   .qprompt{font-size:clamp(22px,4vw,34px); text-align:center; margin:6px 0; font-weight:800;}
   .qpicture{font-size:clamp(70px,18vw,150px); text-align:center; margin:6px 0;}
   .speakBtn{ align-self:center; background:var(--yellow); border:none; border-radius:999px; font-size:clamp(16px,3vw,24px); font-weight:800; padding:10px 24px; cursor:pointer; margin-bottom:6px; }
+  /* 🌅 あさモード — カード1枚ずつ。絵文字ともじを必ず併記する
+     （あおいはカタカナがまだ読めないので、もじだけだと伝わらない。絵文字があればカタカナも通る） */
+  /* 入口は「細い帯」にする。.bigbtn（min-height:30vh）で作ると、その下の
+     ごほうび・ずかんが画面の外に押し出されて、朝いちばん押せなくなる */
+  .asaBar{ display:flex; align-items:center; justify-content:center; gap:12px; width:100%; flex:0 0 auto;
+    margin:0 0 10px; padding:13px 18px; border:none; border-radius:20px; cursor:pointer;
+    background:var(--yellow); color:var(--ink); font-weight:900;
+    font-size:clamp(18px,3.4vw,28px); box-shadow:0 5px 0 rgba(0,0,0,.12); }
+  .asaBar .emoji{ font-size:clamp(26px,4.6vw,40px); line-height:1; }
+  .asaCard{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:#fff; border:6px solid var(--yellow); border-radius:32px; box-shadow:0 8px 0 rgba(0,0,0,.10);
+    margin:6px 0 12px; padding:16px; text-align:center; }
+  /* vmin基準にして、たてに持ってもよこに持ってもカードいっぱいに大きく出る */
+  .asaEmoji{ font-size:clamp(90px,30vmin,280px); line-height:1; }
+  .asaName{ font-size:clamp(26px,7vmin,58px); font-weight:900; margin-top:8px; line-height:1.3;
+    font-family:"Klee One","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif; }
+  .asaExtra{ margin-top:14px; padding-top:12px; border-top:3px dashed #ffe08a; }
+  .asaExtraT{ font-size:clamp(13px,2.6vw,18px); color:#b0a08e; }
+  .asaExtraI{ font-size:clamp(20px,4.5vw,34px); font-weight:900; }
+  .asaOk{ background:var(--green); color:#fff; border:none; border-radius:999px; width:100%; margin:0;
+    font-size:clamp(24px,5.5vw,40px); font-weight:900; padding:18px; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.14); }
+  .asaSub{ display:flex; gap:12px; margin-top:12px; }
+  .asaSub button{ flex:1; margin:0; background:#fff; border:3px solid #eee; border-radius:999px; color:var(--ink);
+    font-size:clamp(14px,2.8vw,20px); font-weight:800; padding:10px; cursor:pointer; }
+  .setSec textarea{ width:100%; border:2px solid #f0e6d0; border-radius:12px; padding:10px;
+    font-size:16px; font-family:inherit; box-sizing:border-box; }
+  /* 🎒 きょうの もちもの（ほいくえん）— 中身があるときだけ出る */
+  /* ★ホームは「ごほうび・ずかんまで指が届く」ことを優先して、ここは詰めて置く */
+  .mochiCard{ background:#fff; border:5px solid var(--orange); border-radius:24px; box-shadow:0 6px 0 rgba(0,0,0,.10);
+    padding:9px 14px 11px; margin:0 0 10px; text-align:center; flex:0 0 auto; }
+  .mochiCard h3{ margin:0 0 4px; font-size:clamp(14px,2.6vw,20px); color:var(--ink); }
+  .mochiItem{ font-size:clamp(19px,4vw,32px); font-weight:900; line-height:1.3; }
+  .mochiMama{ font-size:clamp(11px,2vw,15px); color:#b0a08e; margin-top:5px; }
+  .mochiCard .speakBtn{ margin:8px 0 0; padding:7px 20px; font-size:clamp(13px,2.4vw,18px); }
   .choices{flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; align-content:center;}
   .choice{ border:none; border-radius:24px; background:#fff; border:5px solid var(--purple); font-weight:600; color:var(--ink); cursor:pointer; min-height:26vh; box-shadow:0 6px 0 rgba(0,0,0,.12); font-size:clamp(46px,13vw,110px); font-family:"Klee One","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif; }
   .choice:active{transform:translateY(3px);}
@@ -150,11 +184,40 @@
 
 <!-- ホーム -->
 <section id="home" class="screen active">
+  <!-- 🌅 あさモードの入口。あさ（4〜10時）だけ出す＝ひるまはアイコンが増えない -->
+  <button class="asaBar" id="asaWrap" onclick="asaOpen()" style="display:none">
+    <span class="emoji" id="asaBtnEmoji">🌅</span><span id="asaBtnLabel">あさの したく</span>
+  </button>
+  <!-- 🎒 ほいくえんの もちもの。ママのiPhone（もちものチェック）から送られた日だけ出る -->
+  <div class="mochiCard" id="mochiCard" style="display:none">
+    <h3>🎒 きょうの もちもの</h3>
+    <div id="mochiItems"></div>
+    <div class="mochiMama" id="mochiMama"></div>
+    <button class="speakBtn" onclick="sayMochi()" style="margin:10px 0 0">🔊 きいてみる</button>
+  </div>
   <div class="bigbtns g2">
     <button class="bigbtn b-study" onclick="go('studyMenu')"><span class="emoji">✏️</span>おべんきょう</button>
     <button class="bigbtn b-help" onclick="go('help')"><span class="emoji">🧺</span>おてつだい</button>
     <button class="bigbtn b-shop" onclick="go('shop')"><span class="emoji">🎁</span>ごほうび</button>
     <button class="bigbtn b-zukan" onclick="go('zukan')"><span class="emoji">🏅</span>ずかん</button>
+  </div>
+</section>
+
+<!-- 🌅 あさモード（カードを1枚ずつ めくる） -->
+<section id="asa" class="screen">
+  <div class="qtop">
+    <button class="back" onclick="go('home')">← もどる</button>
+    <span class="levelBadge" id="asaProg"></span>
+  </div>
+  <div class="asaCard">
+    <div class="asaEmoji" id="asaEmoji">🌅</div>
+    <div class="asaName" id="asaName"></div>
+    <div class="asaExtra" id="asaExtra" style="display:none"></div>
+  </div>
+  <button class="asaOk" onclick="asaOk()">できた！</button>
+  <div class="asaSub">
+    <button onclick="asaSkip()">あとで まわす</button>
+    <button onclick="asaSay()">🔊 もういちど きく</button>
   </div>
 </section>
 
@@ -378,10 +441,45 @@
       </details>
 
       <details class="setSec">
+        <summary>🌅 あさの したく</summary>
+        <div class="secBody">
+          <label>じゅんばん（1行に1つ・「絵文字 スペース なまえ」の形）</label>
+          <textarea id="setAsaSteps" style="min-height:200px"></textarea>
+          <p style="font-size:14px;color:#999;margin:6px 0 0;line-height:1.5;">
+            ★絵文字は必ず入れる（カタカナが読めなくても伝わるように）。<br>
+            ★🎒 のカードでは、きょうの もちもの（⭐きょうだけ）も出ます。</p>
+          <label>ぜんぶ できたら もらえる ポイント</label>
+          <input id="setAsaPt" type="number" min="0">
+          <label>この じかんまでに 終わったら ボーナス（へいじつだけ判定・おやすみは いつでも つく）</label>
+          <input id="setAsaGoal" type="time">
+          <label>ボーナス ポイント</label>
+          <input id="setAsaBonusPt" type="number" min="0">
+          <button class="delBtn" style="margin-top:10px" onclick="asaResetToday()">きょうの あさの したくを やりなおす</button>
+        </div>
+      </details>
+
+      <details class="setSec">
+        <summary>🎒 もちもの（ほいくえん）</summary>
+        <div class="secBody">
+          <label>もちものアプリの ウェブアプリURL（GAS）</label>
+          <input id="setMochiUrl" placeholder="https://script.google.com/macros/s/..../exec" inputmode="url">
+          <label>あいことば（token）</label>
+          <input id="setMochiToken" placeholder="lunana2026">
+          <p style="font-size:14px;color:#999;margin:8px 0 0;line-height:1.5;">
+            ママのiPhoneの「もちものチェック」で 📤 を押した分が、あさ ホームに出ます。<br>
+            この2つは この端末の中だけに保存されます（GitHubには載りません）。</p>
+          <button class="addBtn" style="margin-top:10px" onclick="pullMochi(true)">🎒 いま とりにいく</button>
+          <p id="mochiSyncNote" style="font-size:14px;color:#999;margin:8px 0 0;"></p>
+        </div>
+      </details>
+
+      <details class="setSec">
         <summary>🔧 そのほか</summary>
         <div class="secBody">
           <label>あんしょうばんごうの へんこう（4けた・あけたままなら そのまま）</label>
           <input id="setPin" type="tel" maxlength="4" placeholder="****">
+          <!-- ★GitHubに上げた版が届いたかを、ここの数字で見分ける（sw.js の CACHE と同じ数字にしておく） -->
+          <p style="font-size:13px;color:#bbb;margin:12px 0 0;">ばーじょん：<b>ganbari-v13</b></p>
         </div>
       </details>
 
@@ -412,7 +510,13 @@ const DEFAULTS = { points:0, mode:'weekday', minPerPt:5, swMin:30, stopBonus:2, 
   chores: JSON.parse(JSON.stringify(CHORE_SEED)),
   history:[], dailyLog:{},
   levels:{word:1,num:1,kata:1,write:1}, streaks:{word:0,num:0,kata:0,write:0},
-  stickers:[], day:todayStr(), correctCount:0, choreCounts:{} };
+  stickers:[], day:todayStr(), correctCount:0, choreCounts:{},
+  /* 🎒 もちもの（ほいくえん）：ママのiPhoneが送ったぶんを読むだけ。この端末は書き込まない */
+  mochiUrl:'', mochiToken:'', mochiDay:'', mochiTryAt:0,
+  mochi:{date:'',refill:{},special:[],memo:''},
+  /* 🌅 あさモード：朝の支度をカードで1枚ずつ。ぜんぶ終わったらポイント */
+  asaSteps:[], asaDone:{}, asaIdx:0, asaPaidDay:'',
+  asaPt:3, asaBonusPt:2, asaGoalTime:'07:15' };
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 function freshDefaults(){ return JSON.parse(JSON.stringify(DEFAULTS)); }
 let S = load();
@@ -425,6 +529,7 @@ function load(){
     s.streaks = Object.assign({word:0,num:0,kata:0,write:0}, saved.streaks||{});
     if(!Array.isArray(s.stickers)) s.stickers=[];
     if(typeof s.choreCounts!=='object'||!s.choreCounts) s.choreCounts={};
+    if(typeof s.mochi!=='object'||!s.mochi) s.mochi={date:'',refill:{},special:[],memo:''};
     // 旧版（choresClaimed 配列）からの移行
     if(Array.isArray(saved.choresClaimed)){ saved.choresClaimed.forEach(id=>{ s.choreCounts[id]=(s.choreCounts[id]||0)+1; }); }
     if(!(typeof s.minPerPt==='number' && s.minPerPt>0)) s.minPerPt=5;
@@ -455,7 +560,10 @@ function load(){
     // dailyLog は直近14日だけ残す
     const keys=Object.keys(s.dailyLog);
     if(keys.length>14){ keys.sort(dayKeyCmp).slice(0,keys.length-14).forEach(k=>delete s.dailyLog[k]); }
-    if(s.day !== todayStr()){ s.day=todayStr(); s.correctCount=0; s.choreCounts={}; s.earnedToday=0; s.pageProg=0; s.streaks={word:0,num:0,kata:0,write:0}; }
+    if(typeof s.asaDone!=='object'||!s.asaDone) s.asaDone={};
+    if(!Array.isArray(s.asaSteps)) s.asaSteps=[];
+    if(s.day !== todayStr()){ s.day=todayStr(); s.correctCount=0; s.choreCounts={}; s.earnedToday=0; s.pageProg=0; s.streaks={word:0,num:0,kata:0,write:0};
+      s.asaDone={}; s.asaIdx=0; }   // 🌅 あさモードも日付が変わったら まっさらに戻す
     return s;
   }catch(e){ return freshDefaults(); }
 }
@@ -966,16 +1074,25 @@ function getYouTube(min){
   // ★ window.open は「ボタンを押した瞬間」に呼ばないと、ブラウザのポップアップブロックで
   //    だまって消される。以前は演出のため setTimeout(...,800) の中で開いていたので起動しなかった。
   const w = window.open(YT_URL,'_blank');
-  celebrate('🎬','いってらっしゃい！','YouTube Kids を '+min+'ぷん みようね');
-  if(!w){
-    // ブロックされた時のたすけ舟：自分の指で押したリンクは絶対に止められない
-    const p=document.getElementById('celeMsg');
-    const a=document.createElement('a');
-    a.href=YT_URL; a.target='_blank'; a.rel='noopener';
-    a.textContent='▶ ここを おして ひらこう！';
-    a.style.cssText='display:block;margin-top:14px;padding:16px;border-radius:14px;background:#ff4757;color:#fff;font-size:20px;font-weight:700;text-decoration:none;';
-    p.appendChild(a);
+  if(w){
+    /* ⏱️ 見はじめと同時に おばけタイマーを動かす。
+       ptを渡すのはアプリなのに「もう おしまい」を言うのは ママ、という形をやめるため。
+       ★おいわい画面は出さない。タイマー画面がそのまま「いってらっしゃい」になる
+         （両方オーバーレイなので重ねると下の画面が押せなくなる） */
+    startTimer(min, '🎬 YouTube タイム', 'ゆーちゅーぶ タイム すたーと。 おわりの じかんに なったら おしえるね');
+    return;
   }
+  // ブロックされた時のたすけ舟：自分の指で押したリンクは絶対に止められない
+  celebrate('🎬','いってらっしゃい！','YouTube Kids を '+min+'ぷん みようね');
+  const p=document.getElementById('celeMsg');
+  const a=document.createElement('a');
+  a.href=YT_URL; a.target='_blank'; a.rel='noopener';
+  a.textContent='▶ ここを おして ひらこう！';
+  a.style.cssText='display:block;margin-top:14px;padding:16px;border-radius:14px;background:#ff4757;color:#fff;font-size:20px;font-weight:700;text-decoration:none;';
+  // このリンクから開いた場合も、押した時点からタイマーを始める
+  a.onclick=()=>{ closeOverlay('celebrate');
+    startTimer(min, '🎬 YouTube タイム', 'ゆーちゅーぶ タイム すたーと'); };
+  p.appendChild(a);
 }
 let timerIv=null, warned5=false, warned1=false, timerPhase='play';
 let endAt=0, lastNudge=0, wakeLock=null;
@@ -989,16 +1106,20 @@ document.addEventListener('visibilitychange', ()=>{
   }
 });
 function getSwitch(min){
-  const dur = min||S.swMin;
+  startTimer(min||S.swMin, '🎮 スイッチ タイム', 'スイッチ タイム すたーと');
+}
+/* 段階式おばけタイマーの本体。スイッチでもYouTubeでも同じものを使う。
+   ★終わりの「時刻」で判定しているので、画面が裏に回っても時間はズレない */
+function startTimer(dur, label, voice){
   warned5=false; warned1=false; timerPhase='play'; lastNudge=0;
   endAt = Date.now() + dur*60*1000;   // 終わりの「時刻」を決める（実時計で判定）
   // タイマー画面を「あそび中」の見た目にリセット
   document.getElementById('ghost').style.display='none';
-  document.getElementById('timerTitle').textContent='🎮 スイッチ タイム（'+dur+'ぷん）';
+  document.getElementById('timerTitle').textContent=label+'（'+dur+'ぷん）';
   document.getElementById('timerMsg').textContent='タイマーが なったら おしまいだよ';
   document.getElementById('timerBtns').innerHTML='<button onclick="stopTimer()" style="background:#eee;">タイマーを とめる</button>';
   document.getElementById('timer').classList.add('active');
-  speak('スイッチ タイム すたーと'); requestWake();
+  speak(voice); requestWake();
   clearInterval(timerIv); timerIv=setInterval(tickTimer,1000); tickTimer();
 }
 // 毎秒＆画面復帰時に、実時刻から残り/超過を計算しなおす（一瞬止まっても追いつく）
@@ -1077,6 +1198,12 @@ function openSettings(){
   document.getElementById('setMinPerPt').value=S.minPerPt; document.getElementById('setStopBonus').value=S.stopBonus;
   document.getElementById('setGraceMin').value=S.graceMin; document.getElementById('setDailyCap').value=S.dailyCap;
   document.getElementById('setPin').value='';
+  document.getElementById('setMochiUrl').value=S.mochiUrl||'';
+  document.getElementById('setMochiToken').value=S.mochiToken||'';
+  document.getElementById('setAsaSteps').value=asaText();
+  document.getElementById('setAsaPt').value=S.asaPt;
+  document.getElementById('setAsaBonusPt').value=S.asaBonusPt;
+  document.getElementById('setAsaGoal').value=S.asaGoalTime||'07:15';
   const capTxt=(S.dailyCap>0)?(' / '+S.dailyCap):'（むせいげん）';
   document.getElementById('todayInfo').textContent='きょうの おべんきょうポイント：'+S.earnedToday+capTxt
     +'　｜　レベル ことば'+S.levels.word+'・かず'+S.levels.num+'・カタカナ'+S.levels.kata+'・かく'+S.levels.write;
@@ -1095,7 +1222,19 @@ function saveSettings(){
   // PIN変更（4桁の数字が入っていたときだけ）
   const pin=document.getElementById('setPin').value.trim();
   if(/^\d{4}$/.test(pin)) S.pin=pin;
+  // 🎒 もちもの連携（URLを入れ替えたら、その場で取り直せるように取り込み済みフラグを外す）
+  const mu=document.getElementById('setMochiUrl').value.trim();
+  const mt=document.getElementById('setMochiToken').value.trim();
+  if(mu!==S.mochiUrl || mt!==S.mochiToken){ S.mochiDay=''; S.mochiTryAt=0; }
+  S.mochiUrl=mu; S.mochiToken=mt;
+  // 🌅 あさモード
+  S.asaSteps=asaParse(document.getElementById('setAsaSteps').value);
+  S.asaPt=Math.max(0,+document.getElementById('setAsaPt').value||0);
+  S.asaBonusPt=Math.max(0,+document.getElementById('setAsaBonusPt').value||0);
+  const gt=document.getElementById('setAsaGoal').value;
+  if(/^\d{2}:\d{2}$/.test(gt)) S.asaGoalTime=gt;
   save(); closeOverlay('settings');
+  pullMochi(false);
 }
 function resetDay(){ S.correctCount=0; S.choreCounts={}; S.earnedToday=0; S.pageProg=0; S.streaks={word:0,num:0,kata:0,write:0}; save(); closeOverlay('settings'); }
 function resetLevels(){ S.levels={word:1,num:1,kata:1,write:1}; S.streaks={word:0,num:0,kata:0,write:0}; save(); openSettings(); }
@@ -1219,6 +1358,186 @@ function renderDailyLog(){
   box.innerHTML=html+'</table>';
 }
 
+/* ============ 🎒 もちもの（ほいくえん）============
+   ママのiPhoneの「もちものチェック」→ スプレッドシート → このタブレット。
+   ここは「読むだけ」。入れる人はママのiPhone1台だけ、と決めてある（両方から書くと どっちが正か分からなくなる）。
+   ★つながらなくてもアプリは絶対に止めない。もちものカードが出ないだけ。 */
+// スプシは 2026-07-30 の形（0埋め）で日付を持っている。todayStr() は '2026-7-30' なので別に用意する
+function todayIso(){ const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function mochiEsc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+/* あおいはカタカナがまだ読めない。絵文字が付いていない品目には⭐を足して、
+   「もじだけのカード」を絶対に作らないようにする */
+function withEmoji(t){
+  return /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u.test(String(t)) ? String(t) : '⭐ '+t;
+}
+
+async function pullMochi(manual){
+  if(!S.mochiUrl){ if(manual) setMochiNote('先に ウェブアプリURL を入れてね'); return; }
+  const now=Date.now();
+  if(!manual){
+    if(S.mochiDay===todayIso()) return;                    // きょうぶんは もう受け取っている
+    if(now-(S.mochiTryAt||0) < 15*60*1000) return;          // 空振りの連打を防ぐ（15分あける）
+  }
+  S.mochiTryAt=now;
+  setMochiNote('🎒 きいています…');
+  try{
+    const u = S.mochiUrl + (S.mochiUrl.indexOf('?')>=0?'&':'?')
+      + 'token='+encodeURIComponent(S.mochiToken)
+      + '&mode=mochimono&date='+todayIso();
+    const ctl=new AbortController();
+    const to=setTimeout(()=>ctl.abort(), 6000);             // 6秒で見切る（朝を待たせない）
+    const res=await fetch(u,{signal:ctl.signal});
+    clearTimeout(to);
+    const j=await res.json();
+    if(j.status!=='success') throw new Error(j.message||'error');
+    if(j.date===todayIso()){
+      S.mochi={date:j.date, refill:j.refill||{}, special:j.special||[], memo:j.memo||''};
+      S.mochiDay=todayIso();                                // 取れた時だけ「きょうは済み」にする
+      setMochiNote('🎒 '+j.date.slice(5).replace('-','/')+' ぶんを うけとりました');
+    }else{
+      S.mochi={date:'',refill:{},special:[],memo:''};       // まだ来ていない＝あとでまた見にいく
+      setMochiNote('🎒 きょうぶんの メモは まだ ありません');
+    }
+    save();                                                 // save() の中で render() が走る
+  }catch(err){
+    setMochiNote('⚠️ とりにいけませんでした（あとで もういちど ためします）');
+  }
+}
+function setMochiNote(msg){ const el=document.getElementById('mochiSyncNote'); if(el) el.textContent=msg; }
+
+function renderMochi(){
+  const card=document.getElementById('mochiCard'); if(!card) return;
+  const m=S.mochi||{date:'',refill:{},special:[]};
+  const sp=(m.special||[]).map(x=>String(x).trim()).filter(Boolean);
+  const rf=Object.keys(m.refill||{}).filter(k=>(+m.refill[k])>0);
+  // 中身が無い日はカードごと出さない（毎朝ムダに1枚増やさない）
+  if(!m.date || (!sp.length && !rf.length)){ card.style.display='none'; return; }
+  document.getElementById('mochiItems').innerHTML =
+    sp.length ? sp.map(t=>'<div class="mochiItem">'+mochiEsc(withEmoji(t))+'</div>').join('')
+              : '<div class="mochiItem">⭐ きょうだけの ものは ないよ</div>';
+  document.getElementById('mochiMama').textContent =
+    rf.length ? '👩 ママへ：ほじゅう '+rf.map(k=>k+' '+m.refill[k]).join('・') : '';
+  card.style.display='block';
+}
+function sayMochi(){
+  const sp=((S.mochi||{}).special||[]).map(x=>String(x).trim()).filter(Boolean);
+  // 絵文字は読み上げに乗らないので落としてから喋らせる
+  const words=sp.map(t=>t.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,'').trim()).filter(Boolean);
+  speak(words.length ? 'きょうは '+words.join('と')+' を もっていくよ'
+                     : 'きょうだけ もっていく ものは ないよ');
+}
+
+/* ============ 🌅 あさモード ============
+   紙の「朝の支度カード」（2025-07・画像10枚のうち6枚で力尽きた）のやり直し。
+   ★絵文字は飾りではなく本体。あおいはカタカナがまだ読めないので、
+     もじだけのカードは伝わらない。絵文字が入っていればカタカナの語も通る。
+   ★急かすのを親からアプリに移すのが目的。だからカードは1枚ずつしか出さない
+     （全部いっぺんに見せると「まだこんなにある」になる）。 */
+const ASA_SEED=[
+  {e:'🚽', n:'トイレ'},
+  {e:'🧼', n:'かおを あらう'},
+  {e:'🥤', n:'うがい'},
+  {e:'🍚', n:'あさごはん'},
+  {e:'🍽️', n:'おさらを かたづける'},
+  {e:'👕', n:'きがえる（くつしたも）'},
+  {e:'🪥', n:'はみがき'},
+  {e:'🧼', n:'かおを あらう ２かいめ'},
+  {e:'💇', n:'かみを ととのえる'},
+  {e:'🎒', n:'リュック'},
+  {e:'✋', n:'いってきます'}
+];
+function asaList(){ return (Array.isArray(S.asaSteps)&&S.asaSteps.length)?S.asaSteps:ASA_SEED; }
+// idは「なまえ」から作る。順番を入れ替えても できた印がズレないように
+function asaId(st){ return 'a_'+String(st.n||'').replace(/\s/g,''); }
+function asaRest(){ return asaList().filter(st=>!S.asaDone[asaId(st)]); }
+function asaText(){ return asaList().map(st=>(st.e||'⭐')+' '+(st.n||'')).join('\n'); }
+function asaParse(text){
+  return String(text).split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{
+    const a=line.indexOf(' '), b=line.indexOf('　');       // 半角・全角どちらのスペースでも切る
+    const i=(a>=0&&b>=0)?Math.min(a,b):Math.max(a,b);
+    if(i<0) return {e:'⭐', n:line};                        // 絵文字が無ければ⭐で埋める
+    return {e:line.slice(0,i).trim(), n:line.slice(i+1).trim()};
+  }).filter(st=>st.n);
+}
+function asaOpen(){ S.asaIdx=0; go('asa'); asaRender(); }
+function asaRender(){
+  const rest=asaRest(), all=asaList();
+  if(!rest.length){ asaFinish(); return; }
+  if(S.asaIdx>=rest.length) S.asaIdx=0;
+  const st=rest[S.asaIdx];
+  document.getElementById('asaEmoji').textContent=st.e||'⭐';
+  document.getElementById('asaName').textContent=st.n||'';
+  document.getElementById('asaProg').textContent='あと '+rest.length+'こ';
+  // 🎒のカードでは、きょうのもちもの（⭐きょうだけ）も一緒に見せる
+  const ex=document.getElementById('asaExtra');
+  const sp=((S.mochi||{}).special||[]).map(x=>String(x).trim()).filter(Boolean);
+  if((st.e||'').indexOf('🎒')>=0 && sp.length){
+    ex.innerHTML='<div class="asaExtraT">きょうは これも いれるよ</div>'
+      + sp.map(t=>'<div class="asaExtraI">'+mochiEsc(withEmoji(t))+'</div>').join('');
+    ex.style.display='block';
+  } else { ex.style.display='none'; }
+  asaSay();
+}
+function asaSay(){
+  const rest=asaRest(); if(!rest.length) return;
+  const st=rest[S.asaIdx]||rest[0];
+  let t=String(st.n||'').replace(/[（(].*?[）)]/g,'').trim();   // かっこの中は読まない
+  const sp=((S.mochi||{}).special||[]).map(x=>String(x).trim()).filter(Boolean);
+  if((st.e||'').indexOf('🎒')>=0 && sp.length){
+    const w=sp.map(x=>x.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,'').trim()).filter(Boolean);
+    if(w.length) t += '。 きょうは '+w.join('と')+' も いれるよ';
+  }
+  speak(t);
+}
+function asaOk(){
+  const rest=asaRest(); if(!rest.length){ asaFinish(); return; }
+  S.asaDone[asaId(rest[S.asaIdx]||rest[0])]=true; S.asaIdx=0; save();
+  if(!asaRest().length){ asaFinish(); return; }
+  ding(); asaRender();
+}
+function asaSkip(){
+  const rest=asaRest(); if(rest.length<2) return;           // 残り1枚なら まわす先がない
+  S.asaIdx=(S.asaIdx+1)%rest.length; asaRender();
+}
+// へいじつだけ時間を見る。おやすみは急かさない＝いつでもボーナスがつく
+function asaInTime(){
+  if(S.mode!=='weekday') return true;
+  const m=/^(\d{1,2}):(\d{2})$/.exec(String(S.asaGoalTime||'07:15'));
+  if(!m) return false;
+  const d=new Date();
+  return (d.getHours()*60+d.getMinutes()) <= (+m[1]*60 + +m[2]);
+}
+function asaFinish(){
+  const t=todayStr();
+  if(S.asaPaidDay!==t){
+    S.asaPaidDay=t;
+    const inTime=asaInTime();
+    const pt=(+S.asaPt||0) + (inTime?(+S.asaBonusPt||0):0);
+    S.points += pt;                                          // おべんきょうの1日上限とは別ものなので earnedToday は触らない
+    save();
+    speak('ぜんぶ できたね！ いってきます！');
+    celebrate('🌸','ぜんぶ できたね！','ポイント ＋'+pt+(inTime&&(+S.asaBonusPt||0)>0?'（ボーナス こみ）':''));
+  }else{
+    celebrate('✋','いってきます！','きょうは ぜんぶ できたよ');
+  }
+  go('home');
+}
+function asaResetToday(){
+  S.asaDone={}; S.asaIdx=0; S.asaPaidDay='';
+  save(); closeOverlay('settings');
+}
+// あさ（4〜10時）だけ入口を出す。ひるまは出さない＝アイコンが増えず4歳が迷わない
+function renderAsaBtn(){
+  const wrap=document.getElementById('asaWrap'); if(!wrap) return;
+  const h=new Date().getHours();
+  if(h<4 || h>=10){ wrap.style.display='none'; return; }
+  const done=!asaRest().length;
+  document.getElementById('asaBtnEmoji').textContent = done?'🌸':'🌅';
+  document.getElementById('asaBtnLabel').textContent = done?'ぜんぶ できた！':'あさの したく';
+  wrap.style.display='flex';
+}
+
 /* ============ 描画 ============ */
 function render(){
   document.getElementById('ptVal').textContent=S.points;
@@ -1226,8 +1545,15 @@ function render(){
   const need=(S.mode==='weekday')?3:5;
   document.getElementById('pageMeter').textContent='📖'+'●'.repeat(S.pageProg)+'○'.repeat(Math.max(0,need-S.pageProg));
   renderLevels();
+  renderMochi();
+  renderAsaBtn();
 }
 render();
+pullMochi(false);
+// 画面に戻ってきた時にも見にいく（朝ひらいた時に まだ届いていなかった場合の保険）
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible') pullMochi(false);
+});
 
 /* ============ アプリ化（オフライン対応） ============ */
 if('serviceWorker' in navigator){
